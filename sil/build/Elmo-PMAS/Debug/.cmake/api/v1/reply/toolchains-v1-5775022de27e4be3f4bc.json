@@ -1,0 +1,74 @@
+{
+	"kind" : "toolchains",
+	"toolchains" : 
+	[
+		{
+			"compiler" : 
+			{
+				"id" : "GNU",
+				"implicit" : 
+				{
+					"includeDirectories" : 
+					[
+						"/opt/pmas/sysroots/armv7at2hf-neon-linux-gnueabi/usr/include/tirpc",
+						"/opt/pmas/sysroots/x86_64-arago-linux/usr/lib/gcc/arm-none-linux-gnueabihf/9.2.1/include",
+						"/opt/pmas/sysroots/x86_64-arago-linux/usr/lib/gcc/arm-none-linux-gnueabihf/9.2.1/include-fixed",
+						"/opt/pmas/sysroots/armv7at2hf-neon-linux-gnueabi/usr/include"
+					],
+					"linkDirectories" : [],
+					"linkFrameworkDirectories" : [],
+					"linkLibraries" : []
+				},
+				"path" : "/usr/local/bin/elmo-pmas-gcc",
+				"version" : "9.2.1"
+			},
+			"language" : "C",
+			"sourceFileExtensions" : 
+			[
+				"c",
+				"m"
+			]
+		},
+		{
+			"compiler" : 
+			{
+				"id" : "GNU",
+				"implicit" : 
+				{
+					"includeDirectories" : 
+					[
+						"/opt/pmas/sysroots/armv7at2hf-neon-linux-gnueabi/usr/include/c++/9.2.1",
+						"/opt/pmas/sysroots/armv7at2hf-neon-linux-gnueabi/usr/include/c++/9.2.1/arm-none-linux-gnueabihf",
+						"/opt/pmas/sysroots/armv7at2hf-neon-linux-gnueabi/usr/include/tirpc",
+						"/opt/pmas/sysroots/x86_64-arago-linux/usr/lib/gcc/arm-none-linux-gnueabihf/9.2.1/include",
+						"/opt/pmas/sysroots/x86_64-arago-linux/usr/lib/gcc/arm-none-linux-gnueabihf/9.2.1/include-fixed",
+						"/opt/pmas/sysroots/armv7at2hf-neon-linux-gnueabi/usr/include"
+					],
+					"linkDirectories" : [],
+					"linkFrameworkDirectories" : [],
+					"linkLibraries" : []
+				},
+				"path" : "/usr/local/bin/elmo-pmas-g++",
+				"version" : "9.2.1"
+			},
+			"language" : "CXX",
+			"sourceFileExtensions" : 
+			[
+				"C",
+				"M",
+				"c++",
+				"cc",
+				"cpp",
+				"cxx",
+				"mm",
+				"mpp",
+				"CPP"
+			]
+		}
+	],
+	"version" : 
+	{
+		"major" : 1,
+		"minor" : 0
+	}
+}

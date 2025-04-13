@@ -1,0 +1,35 @@
+{
+  "folders": [
+    {
+      "name": "sil",
+      "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/sil"
+    },
+    {
+      "name": "tinytetriz",
+      "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/tinytetriz"
+    }
+  ],
+  "settings": {
+    "files.associations": {
+      "*.py": "python",
+      "iostream": "cpp",
+      "cstdint": "cpp"
+    },
+    "cmake.options.advanced": {
+      "launch": {
+        "inheritDefault": "hidden",
+        "statusBarVisibility": "hidden",
+        "projectStatusVisibility": "hidden"
+      },
+      "debug": {
+        "inheritDefault": "hidden",
+        "statusBarVisibility": "hidden",
+        "projectStatusVisibility": "hidden"
+      }
+    },
+    "cmake.ctest.testExplorerIntegrationEnabled": false,
+    "cmake.showSystemKits": false,
+    "editor.lineNumbers": "relative"
+  },
+  "remoteAuthority": "wsl+maestrodev"
+}

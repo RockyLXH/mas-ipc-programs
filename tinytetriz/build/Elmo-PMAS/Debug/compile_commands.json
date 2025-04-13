@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/mnt/c/MasWorkspace/tinytetriz/build/Elmo-PMAS/Debug",
+  "command": "/usr/local/bin/elmo-pmas-g++ -I../../../. -I/opt/maestro/pmas/includes -I/opt/maestro/pmas/includes/cpp -I/opt/maestro/pmas/includes/cpp/internal -I/opt/maestro/pmas/includes/common -I/home/elmo/dev/curses-linux/include -I/home/elmo/dev/curses-linux/include/ncurses -std=c++17 -fshort-wchar -isystem =/usr/include/tirpc -funwind-tables -fasynchronous-unwind-tables -DNC_PRODUCT=NC_PRODUCT_AM5728 -DNC_PRODUCT_AM5728 -D_PLATINUM -DRTLD_GLOBAL -O0 -g -U_FORTIFY_SOURCE -o CMakeFiles/tinytetriz.pexe.dir/tinytetriz.cpp.o -c /mnt/c/MasWorkspace/tinytetriz/tinytetriz.cpp",
+  "file": "/mnt/c/MasWorkspace/tinytetriz/tinytetriz.cpp"
+}
+]

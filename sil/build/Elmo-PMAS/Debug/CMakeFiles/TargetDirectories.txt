@@ -1,0 +1,3 @@
+/mnt/c/MasWorkspace/sil/build/Elmo-PMAS/Debug/CMakeFiles/rebuild_cache.dir
+/mnt/c/MasWorkspace/sil/build/Elmo-PMAS/Debug/CMakeFiles/edit_cache.dir
+/mnt/c/MasWorkspace/sil/build/Elmo-PMAS/Debug/CMakeFiles/sil.pexe.dir
