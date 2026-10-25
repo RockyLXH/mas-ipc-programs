@@ -8,38 +8,35 @@
 #include "pid.h"
 
 PIDController::PIDController(double kp, double ki, double kd = 0, double ramp = 1000,
-		double limit = 1, double ts = 0.00025) :
-		_kp(kp), _ki(ki), _kd(kd), _outputRamp(ramp), _limit(limit), _ts(ts)
+							 double limit = 1, double ts = 0.00025) : kp_(kp), ki_(ki), kd_(kd), output_ramp_(ramp), limit_(limit), ts_(ts)
 {
-
 }
 
 double PIDController::operator()(double error)
 {
-	double proportional = _kp * error;
+	double proportional = kp_ * error;
 
-	double integral = _integralPrev + _ki * _ts * 0.5f * (error + _errorPrev);
-	integral = _constrain(integral, -_limit, _limit);
+	double integral = integral_prev_ + ki_ * ts_ * 0.5f * (error + error_prev_);
+	integral = CONSTRAIN(integral, -limit_, limit_);
 
-	double derivative = _kd * (error - _errorPrev) / _ts;
+	double derivative = kd_ * (error - error_prev_) / ts_;
 
 	double output = proportional + integral + derivative;
-	output = _constrain(output, -_limit, _limit);
+	output = CONSTRAIN(output, -limit_, limit_);
 
-	if (_outputRamp > 0)
+	if (output_ramp_ > 0)
 	{
-		double output_rate = (output - _outputPrev) / _ts;
+		double output_rate = (output - output_prev_) / ts_;
 
-		if (output_rate > _outputRamp)
-			output = _outputPrev + _outputRamp * _ts;
-		else if (output_rate < -_outputRamp)
-			output = _outputPrev - _outputRamp * _ts;
+		if (output_rate > output_ramp_)
+			output = output_prev_ + output_ramp_ * ts_;
+		else if (output_rate < -output_ramp_)
+			output = output_prev_ - output_ramp_ * ts_;
 	}
 
-	_integralPrev = integral;
-	_outputPrev = output;
-	_errorPrev = error;
+	integral_prev_ = integral;
+	output_prev_ = output;
+	error_prev_ = error;
 
 	return output;
 }
-

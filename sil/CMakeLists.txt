@@ -20,9 +20,13 @@ endif()
 
 file(GLOB SOURCES *.cpp *.c)
 
+# second way to add third-party libraries, add it as subdirectory
+set(FMT_TEST OFF CACHE BOOL "" FORCE) # disable tests
+set(FMT_DOC OFF CACHE BOOL "" FORCE) # disable docs
+add_subdirectory(../tools/fmt fmt-build EXCLUDE_FROM_ALL)
+
 # import 3-party libs, add header file and libs path
-include_directories(/home/elmo/dev/fmt/include)
-link_directories(/home/elmo/dev/fmt/lib)
+include_directories("../")
 
 # Add an if clause to check the value of the variable
 if(${LINK_TYPE} STREQUAL "static")
@@ -33,8 +37,8 @@ endif()
 add_executable(${prog} ${SOURCES})
 
 if(${LINK_TYPE} STREQUAL "static")
-  set(LIBS MMCPPLIB.a MMC_APP_LIB.a pthread dl rt fmt)    
-  target_link_libraries(${prog} -no-pie ${LIBS})
+  set(LIBS MMCPPLIB.a MMC_APP_LIB.a pthread dl rt )    
+  target_link_libraries(${prog} -no-pie ${LIBS} fmt::fmt)
 else()
   set(LIBS MMCPPLIB MMC_APP_LIB pthread dl rt)
   target_link_libraries(${prog} -rdynamic -Wl,-rpath,"/mnt/usr/UserScripts:/mnt/jffs/usr/lib:/usr/lib:/lib" ${LIBS})

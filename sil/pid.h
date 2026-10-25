@@ -7,51 +7,50 @@
 
 #pragma once
 
-#define _constrain(amt, low, high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+#define CONSTRAIN(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
 class PIDController
 {
 public:
-	explicit
-	PIDController(double, double, double, double, double, double);
+	explicit PIDController(double, double, double, double, double, double);
 	~PIDController() = default;
 
-	PIDController(const PIDController&) = delete;
-	PIDController&
-	operator=(const PIDController&) = delete;
+	PIDController(const PIDController &) = delete;
+	PIDController &
+	operator=(const PIDController &) = delete;
 
 	double
 	operator()(double error);
 
-	const double&
-	GetKp() const
+	const double &
+	kp() const
 	{
-		return _kp;
+		return kp_;
 	}
-	void SetKp(const double kp)
+	void set_kp(const double kp)
 	{
-		_kp = kp;
+		kp_ = kp;
 	}
 
-	const double&
-	GetKi() const
+	const double &
+	ki() const
 	{
-		return _ki;
+		return ki_;
 	}
-	void SetKi(const double ki)
+	void set_ki(const double ki)
 	{
-		_ki = ki;
+		ki_ = ki;
 	}
 
 private:
-	double _kp;
-	double _ki;
-	double _kd;
-	double _outputRamp;
-	double _limit;
-	double _ts;
+	double kp_;
+	double ki_;
+	double kd_;
+	double output_ramp_;
+	double limit_;
+	double ts_;
 
-	double _errorPrev;
-	double _outputPrev;
-	double _integralPrev;
+	double error_prev_;
+	double output_prev_;
+	double integral_prev_;
 };

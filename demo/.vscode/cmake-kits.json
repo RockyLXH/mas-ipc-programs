@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Elmo-TMAS",
+    "toolchainFile": "/opt/toolchains/toolchain-tmas.cmake"
+  },
+  {
+    "name": "Elmo-PMAS",
+    "toolchainFile": "/opt/toolchains/toolchain-pmas.cmake"
+  }
+]

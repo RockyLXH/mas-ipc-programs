@@ -1,0 +1,40 @@
+{
+    "configurations": [
+        {
+            "name": "tmas",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/maestro/**"
+            ],
+            "defines": [],
+            "customConfigurationVariables": {
+                "maestroType": "tmas",
+                "maestroTypeU": "TMAS"
+            },
+            "compilerPath": "/usr/local/bin/elmo-tmas-gcc",
+            "cStandard": "c99",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "mergeConfigurations": true
+        },
+        {
+            "name": "pmas",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/maestro/**"
+            ],
+            "defines": [],
+            "customConfigurationVariables": {
+                "maestroType": "pmas",
+                "maestroTypeU": "PMAS"
+            },
+            "cStandard": "c99",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm",
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "mergeConfigurations": true
+        }
+    ],
+    "version": 4
+}

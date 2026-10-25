@@ -1,83 +1,27 @@
 /**
- *  Description:	Use MODBUS to control the motion,
+ *  Description:	Use mbus to control the motion,
  * 	HoldingRegister[0] -> =1: terminate the program.
  * 	HoldingRegister[1] -> set target velocity, unit: RPM.
  * 	HoldingRegister[2] -> velocity loop KP.
  * 	HoldingRegister[3] -> velocity loop KI.
  */
 
+#include <fstream>
+#include <chrono>
+#include <syslog.h> // for system log
 #include "mmc_definitions.h"
 #include "mmcpplib.h"
-#include <ctime>
-#include <signal.h> // for Timer mechanism
-#include "pid.h"
-#include <chrono>
-#include <syslog.h>		// for system log
-#include <SIL_Sample.h> // Application header file.
-#include "fmt/core.h"
-#include "fmt/os.h"
+#include "SIL_Sample.h" // Application header file.
+#include "tools/tools.h"
+#include "fmt/format.h"
 
-int DoSilTest(void);
-int DoAnalogCmdForVelLoop(void);
-int DoSinGenForPosLoop(void);
-int DoVelLoopPidCtrl(void);
-int DoRatchetEffect(void);
-int DoEdgeEffect(void);
-int DoSmoothEffect(void);
-int DoDampEffect(void);
+using namespace utility;
 
-struct Instance
-{
-	int (*func)(void);
-	MMC_PARAMETER_LIST_ENUM src;
-	OPM402 mode;
-};
+static cleaner::Cleaner cleaner{MainClose};
 
-struct Instance instance = {DoSinGenForPosLoop,
-							MMC_UCUSER607A_SRC,
-							OPM402_CYCLIC_SYNC_POSITION_MODE};
-
-PIDController pidVelocity{vel_kp, vel_ki, 0.0f, 1000.0, 1.0, 0.001};
-
-constexpr int TEST_COUNT = 200000;
-static unsigned int recordArray[TEST_COUNT] =
-	{0};
-static bool isTestFinished = false;
-static double initPos[MAX_AXES] =
-	{0.0};
-
-#define IS_P_DRIVE 0 // use platinum drive
-
-/*
- * Using Timer in function for measuring the time elapsed
- * use macro define 'TIMER()' in function which needs to be measured
- */
-
-struct Timer
-{
-private:
-	std::chrono::steady_clock::time_point start;
-	const char *m_name;
-
-public:
-	Timer(const char *name) : m_name(name)
-	{
-		start = std::chrono::steady_clock::now();
-	}
-
-	~Timer()
-	{
-		auto dur = std::chrono::steady_clock::now() - start;
-		fmt::println("function: {} took [{} us]", m_name, dur.count());
-	}
-};
-
-#define MEASUREMENT 0
-#if MEASUREMENT
-#define TIMER() Timer timer(__PRETTY_FUNCTION__)
-#else
-#define TIMER(name)
-#endif
+Instance instance = {DoSilTest,
+					 MMC_UCUSER607A_SRC,
+					 OPM402_CYCLIC_SYNC_POSITION_MODE};
 
 /*
  ============================================================================
@@ -132,22 +76,25 @@ int main(int argc, char *argv[])
 
 		MainLoop();
 
-		MainClose();
+		// MainClose();
 
 		return 0;
 	}
 	catch (CMMCException &e)
 	{
-		syslog(LOG_DEBUG,
-			   "Exception in function %s, axis ref=%s, err=%d, status=%d, bye\n",
-			   e.what(), e.axisName(), e.error(), e.status());
-		MainClose();
+		// fprintf(stderr,
+		// 		"Exception in function %s, axis ref=%s, err=%d, status=%d, bye\n",
+		// 		e.what(), e.axisName(), e.error(), e.status());
+		fmt::println(stderr, "Exception in function {}, axis ref={}, err={}, status={}, bye",
+					 e.what(), e.axisName(), e.error(), e.status());
+		// MainClose();
 		exit(0);
 	}
 	catch (...)
 	{
-		std::cerr << "Unknown exception caught\n";
-		MainClose();
+		// std::cerr << "Unknown exception caught\n";
+		fmt::println(stderr, "Unknown excpetion caught");
+		// MainClose();
 		exit(0);
 	}
 }
@@ -160,10 +107,10 @@ int main(int argc, char *argv[])
  */
 void ReadMbusInput(void)
 {
-	MBus.MbusReadHoldingRegisterTable(0, 4, mbus_read_out);
+	mbus.MbusReadHoldingRegisterTable(0, 4, mbus_read_out);
 
-	giTerminate = mbus_read_out.regArr[0];
-	targetVelocity = static_cast<double>(mbus_read_out.regArr[1]);
+	is_terminate = mbus_read_out.regArr[0];
+	target_vel = static_cast<double>(mbus_read_out.regArr[1]);
 	vel_kp = static_cast<double>(mbus_read_out.regArr[2] / 10000.0);
 	vel_ki = static_cast<double>(mbus_read_out.regArr[3] / 1000.0);
 
@@ -177,7 +124,7 @@ void UpdatePID(void)
 	mbus_write_in.regArr[0] = static_cast<short>(vel_kp * 10000.0);
 	mbus_write_in.regArr[1] = static_cast<short>(vel_ki * 1000.0);
 
-	MBus.MbusWriteHoldingRegisterTable(mbus_write_in);
+	mbus.MbusWriteHoldingRegisterTable(mbus_write_in);
 
 	return;
 }
@@ -185,27 +132,27 @@ void UpdatePID(void)
 void MainLoop(void)
 {
 
-	struct sigaction SigAction;
+	// struct sigaction SigAction;
 
-	SigAction.sa_handler = TerminateApplication;
+	// SigAction.sa_handler = TerminateApplication;
 
-	sigaction(SIGINT, &SigAction, NULL);
+	// sigaction(SIGINT, &SigAction, NULL);
 
-	while (!giTerminate)
+	while (!is_terminate)
 	{
 
 		ReadMbusInput();
 
-		if (isTestFinished)
+		if (is_test_done)
 		{
-			fmt::println("SIL Test is done");
+			std::cout << "SIL Test is done" << std::endl;
 			break;
 		}
 
-		if ((pidVelocity.GetKi() != vel_ki) || (pidVelocity.GetKp() != vel_kp))
+		if ((pid_vel.ki() != vel_ki) || (pid_vel.kp() != vel_kp))
 		{
-			pidVelocity.SetKi(vel_ki);
-			pidVelocity.SetKp(vel_kp);
+			pid_vel.set_ki(vel_ki);
+			pid_vel.set_kp(vel_kp);
 		}
 
 		UpdatePID();
@@ -217,38 +164,35 @@ void MainLoop(void)
 
 void SILInit(void)
 {
+	auto [func, src, mode] = instance;
 
-	MMC_DestroySYNCTimer(gConnHndl);
+	MMC_DestroySYNCTimer(conn_handler);
 
 	for (int i = 0; i < MAX_AXES; ++i)
 	{
-		// lValue meaning:
-		// 0 - NC profiler
-		// 1 - 0;
-		// 2 - User
-		cRTaxis[i].SetBoolParameter(0, instance.src, 0);
-		cRTaxis[i].SetOpMode(instance.mode);
-		while (cRTaxis[i].GetOpMode() != instance.mode)
+		axis_rt[i].SetBoolParameter(0 /* 0 - NC profiler, 2 - User */, src, 0);
+		axis_rt[i].SetOpMode(mode);
+		while (axis_rt[i].GetOpMode() != mode)
 			;
-		cRTaxis[i].SetBoolParameter(2, instance.src, 0);
-		cRTaxis[i].SetUser6071(0.0f);
+		axis_rt[i].SetBoolParameter(2, src, 0);
+		axis_rt[i].SetUser6071(0.0f);
 
 		usleep(1000); // wait some time for ensure the mode changes done.
 
-		cRTaxis[i].PowerOn();
+		axis_rt[i].PowerOn();
 
-		while (!(cRTaxis[i].ReadStatus() & NC_AXIS_STAND_STILL_MASK))
+		while (!(axis_rt[i].ReadStatus() & NC_AXIS_STAND_STILL_MASK))
 			usleep(10000);
 
-		initPos[i] = cRTaxis[i].GetActualPosition();
+		pos[i] = axis_rt[i].GetActualPosition();
 	}
 
 	// set sync timer for running the callback function
-	MMC_CreateSYNCTimer(gConnHndl, instance.func, 1 /* sync timer 1X */);
+	MMC_CreateSYNCTimer(conn_handler, func, 1 /* sync timer 1X */);
 
 	// set user call-back function to highest priority -> 1.
 	// it must be set after CreateSyncTimer func, not before.
-	MMC_SetRTUserCallback(gConnHndl, 1);
+	MMC_SetRTUserCallback(conn_handler, 1);
 
 	return;
 }
@@ -273,9 +217,9 @@ void MainInit(void)
 	static_assert(MAX_AXES >= 1, "configure at least 1 axis by setting 'MAX_AXES' macro!");
 
 	// InitializeCommunication to the GMAS:
-	gConnHndl = cConn.ConnectIPCEx(0x7fffffff, (MMC_MB_CLBK)CallbackFunc);
+	conn_handler = conn.ConnectIPCEx(0x7fffffff, (MMC_MB_CLBK)CallbackFunc);
 
-	MBus.MbusStartServer(gConnHndl, 1);
+	mbus.MbusStartServer(conn_handler, 1);
 
 	// 	Enable throw feature.
 	CMMCPPGlobal::Instance()->SetThrowFlag(true, false);
@@ -284,40 +228,34 @@ void MainInit(void)
 	CMMCPPGlobal::Instance()->RegisterRTE(OnRunTimeError);
 
 	// Register the callback function for Emergency:
-	cConn.RegisterEventCallback(MMCPP_EMCY, (void *)Emergency_Received);
+	conn.RegisterEventCallback(MMCPP_EMCY, (void *)Emergency_Received);
 
 	// Initialize default parameters. This is not a must. Each parameter may be initialized individually.
-	stSingleDefault.fEndVelocity = 0;
-	stSingleDefault.dbDistance = 100000;
-	stSingleDefault.dbPosition = 0;
-	stSingleDefault.fVelocity = 100000;
-	stSingleDefault.fAcceleration = 1000000;
-	stSingleDefault.fDeceleration = 1000000;
-	stSingleDefault.fJerk = 20000000;
-	stSingleDefault.eDirection = MC_POSITIVE_DIRECTION;
-	stSingleDefault.eBufferMode = MC_BUFFERED_MODE;
-	stSingleDefault.ucExecute = 1;
+	axis_default_para.fEndVelocity = 0;
+	axis_default_para.dbDistance = 100000;
+	axis_default_para.dbPosition = 0;
+	axis_default_para.fVelocity = 100000;
+	axis_default_para.fAcceleration = 1000000;
+	axis_default_para.fDeceleration = 1000000;
+	axis_default_para.fJerk = 20000000;
+	axis_default_para.eDirection = MC_POSITIVE_DIRECTION;
+	axis_default_para.eBufferMode = MC_BUFFERED_MODE;
+	axis_default_para.ucExecute = 1;
 	//
 	// TODO: Update number of necessary axes:
 	//
 
-	// char sAxisName[20];
-	string str;
+	char sAxisName[20];
 
 	for (int i = 0; i < MAX_AXES; ++i)
 	{
-#if IS_P_DRIVE
-		// sprintf(sAxisName, "a%02d.Axis 1", i + 1);
-		str = fmt::format("a{:02d}.Axis 1", i + 1);
-#else
 		// sprintf(sAxisName, "a%02d", i + 1);
-		str = fmt::format("a{:02d}", i + 1);
-#endif
-		cRTaxis[i].InitAxisData(str.data(), gConnHndl);
-		cRTaxis[i].SetDefaultParams(stSingleDefault);
+		fmt::format_to(sAxisName, "{:02d}", i + 1);
+		axis_rt[i].InitAxisData(sAxisName, conn_handler);
+		axis_rt[i].SetDefaultParams(axis_default_para);
 
-		if (cRTaxis[i].ReadStatus() & NC_AXIS_ERROR_STOP_MASK)
-			cRTaxis[i].Reset();
+		if (axis_rt[i].ReadStatus() & NC_AXIS_ERROR_STOP_MASK)
+			axis_rt[i].Reset();
 	}
 
 	return;
@@ -343,51 +281,48 @@ void MainClose(void)
 	//
 	//	Here will come code for all closing processes
 	//
-	MMC_DestroySYNCTimer(gConnHndl);
+
+	fmt::println(stdout, "the program is closing ...");
+	MMC_DestroySYNCTimer(conn_handler);
 
 	for (int i = 0; i < MAX_AXES; ++i)
 	{
-		cRTaxis[i].SetUser6071(0.0f);
-		cRTaxis[i].SetBoolParameter(0, MMC_UCUSER6071_SRC, 0);
+		axis_rt[i].SetUser6071(0.0f);
+		axis_rt[i].SetBoolParameter(0, MMC_UCUSER6071_SRC, 0);
 
-		cRTaxis[i].SetUser607A(0.0f);
-		cRTaxis[i].SetBoolParameter(0, MMC_UCUSER607A_SRC, 0);
-		cRTaxis[i].SetUser60FF(0.0f);
-		cRTaxis[i].SetBoolParameter(0, MMC_UCUSER60FF_SRC, 0);
+		axis_rt[i].SetUser607A(0.0f);
+		axis_rt[i].SetBoolParameter(0, MMC_UCUSER607A_SRC, 0);
+		axis_rt[i].SetUser60FF(0.0f);
+		axis_rt[i].SetBoolParameter(0, MMC_UCUSER60FF_SRC, 0);
 
-		cRTaxis[i].SetOpMode(OPM402_CYCLIC_SYNC_POSITION_MODE);
-		while (cRTaxis[i].GetOpMode() != OPM402_CYCLIC_SYNC_POSITION_MODE)
+		axis_rt[i].SetOpMode(OPM402_CYCLIC_SYNC_POSITION_MODE);
+		while (axis_rt[i].GetOpMode() != OPM402_CYCLIC_SYNC_POSITION_MODE)
+			;
 
-			cRTaxis[i].PowerOff();
+		axis_rt[i].PowerOff();
 
-		while (!(cRTaxis[i].ReadStatus() & NC_AXIS_DISABLED_MASK))
+		while (!(axis_rt[i].ReadStatus() & NC_AXIS_DISABLED_MASK))
 			usleep(10000);
 	}
 
-	if (isTestFinished)
+	if (is_test_done)
 	{
-		// file.open("record.txt", ios::out);
-		// if (!file.is_open())
-		// 	std::cerr << "can not open the file\n";
+		ofstream file;
+		file.open("record.txt", ios::out);
+		if (!file.is_open())
+			std::cerr << "can not open the file\n";
 
-		// for (int i = 0; i < TEST_COUNT; ++i)
-		// {
-		// 	file << recordArray[i] << endl;
-		// }
-		// file.flush();
-		// file.close();
-		auto file = fmt::output_file("record.txt");
 		for (int i = 0; i < TEST_COUNT; ++i)
 		{
-			file.print("{}\n", recordArray[i]);
+			file << arr_rec[i] << endl;
 		}
 		file.flush();
 		file.close();
-		fmt::println("write file done");
+		std::cout << "record finished\n";
 	}
 
-	MBus.MbusStopServer();
-	MMC_CloseConnection(gConnHndl);
+	mbus.MbusStopServer();
+	MMC_CloseConnection(conn_handler);
 
 	return;
 }
@@ -433,12 +368,12 @@ int CallbackFunc(unsigned char *recvBuffer, short recvBufferSize, void *lpsock)
 		printf("System Error Event received\r\n");
 		break;
 		/* This is commented as a specific event was written for this function. Once it occurs
-		 * the ModbusWrite_Received will be called
-		 case MODBUS_WRITE_EVT:
+		 * the mbusWrite_Received will be called
+		 case mbus_WRITE_EVT:
 		 // TODO Update additional data to be read such as function parameters.
 		 // TODO Remove return 0 if you want to handle as part of callback.
 		 return 0;
-		 printf("Modbus Write Event received - Updating Outputs\r\n") ;
+		 printf("mbus Write Event received - Updating Outputs\r\n") ;
 
 		 break ;
 		 */
@@ -459,7 +394,7 @@ int CallbackFunc(unsigned char *recvBuffer, short recvBufferSize, void *lpsock)
 //
 //	Modifications:	:	N/A
 //////////////////////////////////////////////////////////////////////
-int OnRunTimeError(const char *msg, unsigned short uiConnHndl,
+int OnRunTimeError(const char *msg, unsigned int uiConnHndl,
 				   unsigned short usAxisRef, short sErrorID, unsigned short usStatus)
 {
 	MMC_CloseConnection(uiConnHndl);
@@ -474,31 +409,31 @@ int OnRunTimeError(const char *msg, unsigned short uiConnHndl,
 //	Created			:	Version 1.00
 //	Updated			:	20/05/2010
 //	Modifications	:	N/A
-//	Purpose			:	Called in case application is terminated, stop modbus, engines, and power off engines.
+//	Purpose			:	Called in case application is terminated, stop mbus, engines, and power off engines.
 //	Input			:	int iSigNum - Signal Num.
 //	Output			:	N/A
 //	Return Value	:	void
 //
 //	Modifications:	:	N/A
 //////////////////////////////////////////////////////////////////////
-void TerminateApplication(int iSigNum)
-{
-	//
-	printf("\nTerminating Application ...\n");
-	giTerminate = true;
-	sigignore(SIGALRM);
-	//
-	switch (iSigNum)
-	{
-	// Handle ctrl+c.
-	case SIGINT:
-		// TODO Close what needs to be closed before program termination.
-		break;
-	default:
-		break;
-	}
-	return;
-}
+// void TerminateApplication(int iSigNum)
+// {
+// 	//
+// 	printf("\nTerminating Application ...\n");
+// 	giTerminate = true;
+// 	sigignore(SIGALRM);
+// 	//
+// 	switch (iSigNum)
+// 	{
+// 	// Handle ctrl+c.
+// 	case SIGINT:
+// 		// TODO Close what needs to be closed before program termination.
+// 		break;
+// 	default:
+// 		break;
+// 	}
+// 	return;
+// }
 
 ///////////////////////////////////////////////////////////////////////
 //	Function name	:	void Emergency_Received(unsigned short usAxisRef, short sEmcyCode)
@@ -560,7 +495,7 @@ int DoSinGenForPosLoop(void)
 	// S-Function (E607AWrite): '<Root>/E607AWrite'
 	//	  Elmo_Write_607A(SineForPos_P.E607AWrite_p1, rtb_DataTypeConversion);
 
-	cRTaxis[0].SetUser607A(rtb_DataTypeConversion);
+	axis_rt[0].SetUser607A(rtb_DataTypeConversion);
 
 	return 0;
 }
@@ -574,22 +509,22 @@ int DoSilTest(void)
 	{
 		if (b)
 		{
-			//		cRTaxis[0].EthercatWritePIVar(4, 0);
-			cRTaxis[0].SetUser607A(0);
+			//		axis_rt[0].EthercatWritePIVar(4, 0);
+			axis_rt[0].SetUser607A(0);
 			b = false;
-			recordArray[cnt++] = cRTaxis[0].GetUser607A();
+			arr_rec[cnt++] = axis_rt[0].GetUser607A();
 		}
 		else
 		{
-			//		cRTaxis[0].EthercatWritePIVar(4, 65536);
-			cRTaxis[0].SetUser607A(10000);
+			//		axis_rt[0].EthercatWritePIVar(4, 65536);
+			axis_rt[0].SetUser607A(10000);
 			b = true;
-			recordArray[cnt++] = cRTaxis[0].GetUser607A();
+			arr_rec[cnt++] = axis_rt[0].GetUser607A();
 		}
 	}
 	else
 	{
-		isTestFinished = true;
+		is_test_done = true;
 	}
 
 	return 0;
@@ -598,7 +533,7 @@ int DoSilTest(void)
 int DoAnalogCmdForVelLoop(void)
 {
 	short value = 0;
-	cRTaxis[2].EthercatReadPIVar(6, 0, value);
+	axis_rt[2].EthercatReadPIVar(6, 0, value);
 
 	if ((value >= -1000) && (value <= 1000))
 		value = 0;
@@ -606,9 +541,9 @@ int DoAnalogCmdForVelLoop(void)
 	double kp = 50000.0;
 	double output = kp * value / 1000.0;
 
-	cRTaxis[0].SetUser60FF(output);
-	cRTaxis[1].SetUser60FF(output);
-	//	cRTaxis[2].SetUser60FF(dOutput1);
+	axis_rt[0].SetUser60FF(output);
+	axis_rt[1].SetUser60FF(output);
+	//	axis_rt[2].SetUser60FF(dOutput1);
 
 	return 0;
 }
@@ -620,9 +555,9 @@ int DoVelLoopPidCtrl(void)
 	 *  KP = 0.01, KI = 1, TS = 1ms for velocity close loop gains in rpm units
 	 */
 
-	double actVelocity = cRTaxis[0].GetActualVelocity(); // * 60 / 10000.0f;
-	double targetCurrent = pidVelocity(targetVelocity - actVelocity);
-	cRTaxis[0].SetUser6071(targetCurrent);
+	double actual_vel = axis_rt[0].GetActualVelocity(); // * 60 / 10000.0f;
+	double targetCurrent = pid_vel(target_vel - actual_vel);
+	axis_rt[0].SetUser6071(targetCurrent);
 
 	return 0;
 }
@@ -631,35 +566,35 @@ int DoRatchetEffect(void)
 {
 	static double distance = 10000 / 10; // A/B: A -> resolution of feedback, B -> equal parts
 	static PIDController pidPos{0.0008, 0.0, 0.0, 10000.0, 2.0, 0.00025};
-	double actPos = cRTaxis[0].GetActualPosition();
+	double actPos = axis_rt[0].GetActualPosition();
 	double targetPos = round(actPos / distance) * distance;
 	double targetCurrent = pidPos(targetPos - actPos);
 
-	cRTaxis[0].SetUser6071(targetCurrent);
+	axis_rt[0].SetUser6071(targetCurrent);
 
 	return 0;
 }
 
 int DoEdgeEffect(void)
 {
-	double actPos = cRTaxis[0].GetActualPosition();
-	static PIDController pidPos{0.01, 0.0, 0.0, 10000.0, 2.0, 0.00025};
-	double L = initPos[0] - 2500, R = initPos[0] + 2500;
+	double actual_pos = axis_rt[0].GetActualPosition();
+	static PIDController pos_pid{0.01, 0.0, 0.0, 10000.0, 2.0, 0.00025};
+	double L = pos[0] - 2500, R = pos[0] + 2500;
 
 	//	if (act_pos < R && act_pos > L)
-	//		cRTaxis[0].SetUser6071(0);
+	//		axis_rt[0].SetUser6071(0);
 	//	else
 	//	{
 	//		if (act_pos < L)
-	//			cRTaxis[0].SetUser6071(pid_pos(L - act_pos));
+	//			axis_rt[0].SetUser6071(pid_pos(L - act_pos));
 	//		if (act_pos > R)
-	//			cRTaxis[0].SetUser6071(pid_pos(R - act_pos));
+	//			axis_rt[0].SetUser6071(pid_pos(R - act_pos));
 	//	}
 
-	double output = (actPos < L) ? (L - actPos) : (actPos > R) ? (R - actPos)
-															   : 0.0;
+	double output = (actual_pos < L) ? (L - actual_pos) : (actual_pos > R) ? (R - actual_pos)
+																		   : 0.0;
 
-	cRTaxis[0].SetUser6071(pidPos(output));
+	axis_rt[0].SetUser6071(pos_pid(output));
 
 	return 0;
 }
@@ -668,7 +603,7 @@ int DoDampEffect(void)
 {
 	double kp = 0.0001;
 
-	cRTaxis[0].SetUser6071(-kp * cRTaxis[0].GetActualVelocity());
+	axis_rt[0].SetUser6071(-kp * axis_rt[0].GetActualVelocity());
 
 	return 0;
 }
@@ -677,7 +612,7 @@ int DoSmoothEffect(void)
 {
 	static PIDController pid{0.0001, 0, 0, 1000, 0.05, 0.00025};
 
-	cRTaxis[0].SetUser6071(pid(cRTaxis[0].GetActualVelocity()));
+	axis_rt[0].SetUser6071(pid(axis_rt[0].GetActualVelocity()));
 
 	return 0;
 }

@@ -1,35 +1,59 @@
 {
-  "folders": [
-    {
-      "name": "sil",
-      "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/sil"
-    },
-    {
-      "name": "tinytetriz",
-      "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/tinytetriz"
-    }
-  ],
-  "settings": {
-    "files.associations": {
-      "*.py": "python",
-      "iostream": "cpp",
-      "cstdint": "cpp"
-    },
-    "cmake.options.advanced": {
-      "launch": {
-        "inheritDefault": "hidden",
-        "statusBarVisibility": "hidden",
-        "projectStatusVisibility": "hidden"
-      },
-      "debug": {
-        "inheritDefault": "hidden",
-        "statusBarVisibility": "hidden",
-        "projectStatusVisibility": "hidden"
-      }
-    },
-    "cmake.ctest.testExplorerIntegrationEnabled": false,
-    "cmake.showSystemKits": false,
-    "editor.lineNumbers": "relative"
+ "folders": [
+  {
+   "name": "sil",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/sil"
   },
-  "remoteAuthority": "wsl+maestrodev"
+  {
+   "name": "tinytetriz",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/tinytetriz"
+  },
+  {
+   "name": "online_spline",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/online_spline"
+  },
+  {
+   "name": "cpld-rs232",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/cpld-rs232"
+  },
+  {
+   "name": "xyz_stage_demo",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/xyz_stage_demo"
+  },
+  {
+   "name": "test",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/test"
+  },
+  {
+   "name": "demo",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/demo"
+  },
+  {
+   "name": "web_logger",
+   "uri": "vscode-remote://wsl+maestrodev/mnt/c/MasWorkspace/web_logger"
+  }
+ ],
+ "settings": {
+  "files.associations": {
+   "*.py": "python",
+   "iostream": "cpp",
+   "cstdint": "cpp"
+  },
+  "cmake.options.advanced": {
+   "launch": {
+    "inheritDefault": "hidden",
+    "statusBarVisibility": "hidden",
+    "projectStatusVisibility": "hidden"
+   },
+   "debug": {
+    "inheritDefault": "hidden",
+    "statusBarVisibility": "hidden",
+    "projectStatusVisibility": "hidden"
+   }
+  },
+  "cmake.ctest.testExplorerIntegrationEnabled": false,
+  "cmake.showSystemKits": false,
+  "editor.lineNumbers": "relative"
+ },
+ "remoteAuthority": "wsl+maestrodev"
 }
