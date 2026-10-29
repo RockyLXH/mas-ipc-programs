@@ -111,8 +111,8 @@ void ReadMbusInput(void)
 
 	is_terminate = mbus_read_out.regArr[0];
 	target_vel = static_cast<double>(mbus_read_out.regArr[1]);
-	vel_kp = static_cast<double>(mbus_read_out.regArr[2] / 10000.0);
-	vel_ki = static_cast<double>(mbus_read_out.regArr[3] / 1000.0);
+	vel_kp = static_cast<double>(mbus_read_out.regArr[2]) / 10000.0;
+	vel_ki = static_cast<double>(mbus_read_out.regArr[3]) / 1000.0;
 
 	return;
 }
@@ -245,13 +245,13 @@ void MainInit(void)
 	// TODO: Update number of necessary axes:
 	//
 
-	char sAxisName[20];
+	char axis_name[][20]{"a01"};
 
 	for (int i = 0; i < MAX_AXES; ++i)
 	{
 		// sprintf(sAxisName, "a%02d", i + 1);
-		fmt::format_to(sAxisName, "{:02d}", i + 1);
-		axis_rt[i].InitAxisData(sAxisName, conn_handler);
+		// fmt::format_to(sAxisName, "{:02d}", i + 1);
+		axis_rt[i].InitAxisData(axis_name[i], conn_handler);
 		axis_rt[i].SetDefaultParams(axis_default_para);
 
 		if (axis_rt[i].ReadStatus() & NC_AXIS_ERROR_STOP_MASK)

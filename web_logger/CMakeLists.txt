@@ -23,6 +23,10 @@ file(GLOB SOURCES *.cpp *.c)
 # import 3-party libs, add header file and libs path
 include_directories("../")
 
+#add httplib
+# set(HTTPLIB_COMPILE ON CACHE BOOL "Compile httplib as a library" FORCE)
+# add_subdirectory(../tools/cpp-httplib httplib-build)
+
 # Add an if clause to check the value of the variable
 if(${LINK_TYPE} STREQUAL "static")
   set(LIBS MMCPPLIB.a MMC_APP_LIB.a pthread dl rt)    
@@ -33,7 +37,7 @@ add_executable(${prog} ${SOURCES})
 
 if(${LINK_TYPE} STREQUAL "static")
   set(LIBS MMCPPLIB.a MMC_APP_LIB.a pthread dl rt)    
-  target_link_libraries(${prog} -no-pie ${LIBS})
+  target_link_libraries(${prog} -no-pie ${LIBS} )
 else()
   set(LIBS MMCPPLIB MMC_APP_LIB pthread dl rt)
   target_link_libraries(${prog} -rdynamic -Wl,-rpath,"/mnt/usr/UserScripts:/mnt/jffs/usr/lib:/usr/lib:/lib" ${LIBS})

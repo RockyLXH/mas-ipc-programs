@@ -38,24 +38,24 @@ int DoDampEffect(void);			 // Torque mode
  General constants
  ============================================================================
  */
-constexpr unsigned short MAX_AXES = 1; // number of Physical axes in the system
-constexpr int TEST_COUNT = 200000;
+constexpr unsigned short MAX_AXES{1}; // number of Physical axes in the system
+constexpr int TEST_COUNT{200000};
 /*
  ============================================================================
  Application global variables
  ============================================================================
  */
 
-bool is_terminate = false; // Flag to request program termination
-double target_vel = 0.0;
-double vel_ki = 0.0;
-double vel_kp = 0.0001;
+bool is_terminate{false};
+double target_vel{};
+double vel_ki{};
+double vel_kp{};
 
 PIDController pid_vel{vel_kp, vel_ki, 0.0f, 1000.0, 1.0, 0.001};
 
-unsigned int arr_rec[TEST_COUNT] = {0};
-bool is_test_done = false;
-double pos[MAX_AXES] = {0.0};
+unsigned int arr_rec[TEST_COUNT]{};
+bool is_test_done{false};
+double pos[MAX_AXES]{};
 /*
  ============================================================================
  Global structures for Elmo's Function Blocks
