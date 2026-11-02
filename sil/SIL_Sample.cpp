@@ -12,16 +12,19 @@
 #include "mmc_definitions.h"
 #include "mmcpplib.h"
 #include "SIL_Sample.h" // Application header file.
-#include "tools/tools.h"
-#include "fmt/format.h"
+#include "tools.h"
+#include "fmt/base.h"
+// #include "fmt/ranges.h" // uncomment it if print a vector or array.
+// #include "tools/toml.hpp"
+#include "pugixml.hpp"
 
 using namespace utility;
 
 static cleaner::Cleaner cleaner{MainClose};
 
-Instance instance = {DoSilTest,
-					 MMC_UCUSER607A_SRC,
-					 OPM402_CYCLIC_SYNC_POSITION_MODE};
+SilConfig instance = {DoSilTest,
+					  MMC_UCUSER607A_SRC,
+					  OPM402_CYCLIC_SYNC_POSITION_MODE};
 
 /*
  ============================================================================
@@ -64,10 +67,21 @@ int main(int argc, char *argv[])
 		 *  LOG_PID
 		 *     Include PID with each message.
 		 */
-		openlog("SIL Program", LOG_CONS | LOG_PID, 0);
+		// openlog("SIL Program", LOG_CONS | LOG_PID, 0);
 
 		// System log file location: /var/log/syslog
-		syslog(LOG_DEBUG, "the program <%s> is working\n", argv[0]);
+		// syslog(LOG_DEBUG, "the program <%s> is working\n", argv[0]);
+
+		// read axis name and group name from resource file
+		if (!ReadResourceFile())
+		{
+			fmt::println(stderr, "read resource file error");
+			return -1;
+		}
+
+		// fmt::println("{}", axis_names);
+		// fmt::println("{}", vec_names);
+		// std::fflush(stdout);
 
 		// Initialize system, axes and all needed initializations
 		MainInit();
@@ -168,23 +182,23 @@ void SILInit(void)
 
 	MMC_DestroySYNCTimer(conn_handler);
 
-	for (int i = 0; i < MAX_AXES; ++i)
+	for (auto &rt : axis_rt)
 	{
-		axis_rt[i].SetBoolParameter(0 /* 0 - NC profiler, 2 - User */, src, 0);
-		axis_rt[i].SetOpMode(mode);
-		while (axis_rt[i].GetOpMode() != mode)
+		rt.SetBoolParameter(0 /* 0 - NC profiler, 2 - User */, src, 0);
+		rt.SetOpMode(mode);
+		while (rt.GetOpMode() != mode)
 			;
-		axis_rt[i].SetBoolParameter(2, src, 0);
-		axis_rt[i].SetUser6071(0.0f);
+		rt.SetBoolParameter(2, src, 0);
+		rt.SetUser6071(0.0f);
 
 		usleep(1000); // wait some time for ensure the mode changes done.
 
-		axis_rt[i].PowerOn();
+		rt.PowerOn();
 
-		while (!(axis_rt[i].ReadStatus() & NC_AXIS_STAND_STILL_MASK))
+		while (!(rt.ReadStatus() & NC_AXIS_STAND_STILL_MASK))
 			usleep(10000);
 
-		pos[i] = axis_rt[i].GetActualPosition();
+		actual_pos.emplace_back(rt.GetActualPosition());
 	}
 
 	// set sync timer for running the callback function
@@ -213,9 +227,6 @@ void SILInit(void)
  */
 void MainInit(void)
 {
-	// ensure there is at least 1 axes to be configured.
-	static_assert(MAX_AXES >= 1, "configure at least 1 axis by setting 'MAX_AXES' macro!");
-
 	// InitializeCommunication to the GMAS:
 	conn_handler = conn.ConnectIPCEx(0x7fffffff, (MMC_MB_CLBK)CallbackFunc);
 
@@ -231,32 +242,31 @@ void MainInit(void)
 	conn.RegisterEventCallback(MMCPP_EMCY, (void *)Emergency_Received);
 
 	// Initialize default parameters. This is not a must. Each parameter may be initialized individually.
-	axis_default_para.fEndVelocity = 0;
-	axis_default_para.dbDistance = 100000;
-	axis_default_para.dbPosition = 0;
-	axis_default_para.fVelocity = 100000;
-	axis_default_para.fAcceleration = 1000000;
-	axis_default_para.fDeceleration = 1000000;
-	axis_default_para.fJerk = 20000000;
-	axis_default_para.eDirection = MC_POSITIVE_DIRECTION;
-	axis_default_para.eBufferMode = MC_BUFFERED_MODE;
-	axis_default_para.ucExecute = 1;
+	axis_default_param.dEndVelocity = 0;
+	axis_default_param.dbDistance = 100000;
+	axis_default_param.dbPosition = 0;
+	axis_default_param.dVelocity = 100000;
+	axis_default_param.dAcceleration = 1000000;
+	axis_default_param.dDeceleration = 1000000;
+	axis_default_param.dJerk = 20000000;
+	axis_default_param.eDirection = MC_POSITIVE_DIRECTION;
+	axis_default_param.eBufferMode = MC_BUFFERED_MODE;
+	axis_default_param.ucExecute = 1;
 	//
 	// TODO: Update number of necessary axes:
 	//
 
-	char axis_name[][20]{"a01"};
-
-	for (int i = 0; i < MAX_AXES; ++i)
+	for (int i = 0; i < MAX_AXIS_CNTS; ++i)
 	{
-		// sprintf(sAxisName, "a%02d", i + 1);
-		// fmt::format_to(sAxisName, "{:02d}", i + 1);
-		axis_rt[i].InitAxisData(axis_name[i], conn_handler);
-		axis_rt[i].SetDefaultParams(axis_default_para);
+		axis_rt[i].InitAxisData(axis_names[i].c_str(), conn_handler);
+		axis_rt[i].SetDefaultParamsEx(axis_default_param);
 
 		if (axis_rt[i].ReadStatus() & NC_AXIS_ERROR_STOP_MASK)
+		{
 			axis_rt[i].Reset();
+		}
 	}
+	std::cout << std::endl;
 
 	return;
 }
@@ -285,7 +295,7 @@ void MainClose(void)
 	fmt::println(stdout, "the program is closing ...");
 	MMC_DestroySYNCTimer(conn_handler);
 
-	for (int i = 0; i < MAX_AXES; ++i)
+	for (int i = 0; i < MAX_AXIS_CNTS; ++i)
 	{
 		axis_rt[i].SetUser6071(0.0f);
 		axis_rt[i].SetBoolParameter(0, MMC_UCUSER6071_SRC, 0);
@@ -312,14 +322,13 @@ void MainClose(void)
 		if (!file.is_open())
 			std::cerr << "can not open the file\n";
 
-		for (int i = 0; i < TEST_COUNT; ++i)
+		for (const auto &rec : arr_rec)
 		{
-			file << arr_rec[i] << endl;
+			file << rec << '\n';
 		}
-		file.flush();
-		file.close();
-		std::cout << "record finished\n";
-	}
+	} // the file will be flushed and closed when leaving the scope.
+
+	std::cout << "record finished\n";
 
 	mbus.MbusStopServer();
 	MMC_CloseConnection(conn_handler);
@@ -577,9 +586,9 @@ int DoRatchetEffect(void)
 
 int DoEdgeEffect(void)
 {
-	double actual_pos = axis_rt[0].GetActualPosition();
+	double pos = axis_rt[0].GetActualPosition();
 	static PIDController pos_pid{0.01, 0.0, 0.0, 10000.0, 2.0, 0.00025};
-	double L = pos[0] - 2500, R = pos[0] + 2500;
+	double L = actual_pos[0] - 2500, R = actual_pos[0] + 2500;
 
 	//	if (act_pos < R && act_pos > L)
 	//		axis_rt[0].SetUser6071(0);
@@ -591,8 +600,8 @@ int DoEdgeEffect(void)
 	//			axis_rt[0].SetUser6071(pid_pos(R - act_pos));
 	//	}
 
-	double output = (actual_pos < L) ? (L - actual_pos) : (actual_pos > R) ? (R - actual_pos)
-																		   : 0.0;
+	double output = (pos < L) ? (L - pos) : (pos > R) ? (R - pos)
+													  : 0.0;
 
 	axis_rt[0].SetUser6071(pos_pid(output));
 
@@ -613,6 +622,56 @@ int DoSmoothEffect(void)
 	static PIDController pid{0.0001, 0, 0, 1000, 0.05, 0.00025};
 
 	axis_rt[0].SetUser6071(pid(axis_rt[0].GetActualVelocity()));
+
+	return 0;
+}
+
+// SilConfig LoadConfigFile()
+// {
+// 	toml::table config;
+// 	SilConfig result{};
+
+// 	try
+// 	{
+// 		config = toml::parse_file("config.toml");
+// 	}
+// 	catch (const toml::parse_error &err)
+// 	{
+// 		std::cerr << "parse failed: " << err << '\n';
+// 		exit(-1);
+// 	}
+
+// 	auto func_name = config["Sil"]["func"].value_or(std::string{"DoSilTest"});
+
+// 	return result;
+// }
+
+int ReadResourceFile()
+{
+
+	pugi::xml_document doc;
+	auto result = doc.load_file("../MMC/config/resources/MMCResources.xml");
+	if (!result)
+		return -1;
+
+	auto nodes = doc.select_nodes("/RESOURCES/MOTION_DEVICES/NODE");
+	// axis_counts = path.size();
+	for (const auto &node : nodes)
+	{
+		axis_names.emplace_back(node.node().attribute("NAME").value());
+	}
+
+	nodes = doc.select_nodes("/RESOURCES/VIRTUAL_OBJECTS/VIRTUAL_OBJECT");
+	if (nodes.empty())
+	{
+		fmt::println("the vector is not exists");
+		return -1;
+	}
+	// axis_counts = path.size();
+	for (const auto &node : nodes)
+	{
+		vec_names.emplace_back(node.node().attribute("NAME").value());
+	}
 
 	return 0;
 }

@@ -20,25 +20,22 @@ endif()
 
 file(GLOB SOURCES *.cpp *.c)
 
-# second way to add third-party libraries, add it as subdirectory
+# third-party libraries, add it as subdirectory
+# fmt library
 set(FMT_TEST OFF CACHE BOOL "" FORCE) # disable tests
 set(FMT_DOC OFF CACHE BOOL "" FORCE) # disable docs
 add_subdirectory(../tools/fmt fmt-build EXCLUDE_FROM_ALL)
+#pugixml library, read/write xml file
+add_subdirectory(../tools/pugixml-1.16 pugixml-build EXCLUDE_FROM_ALL)
 
 # import 3-party libs, add header file and libs path
-include_directories("../")
+include_directories("../tools/")
 
-# Add an if clause to check the value of the variable
-if(${LINK_TYPE} STREQUAL "static")
-  set(LIBS MMCPPLIB.a MMC_APP_LIB.a pthread dl rt)    
-else()
-  set(LIBS MMCPPLIB MMC_APP_LIB pthread dl rt)
-endif()
 add_executable(${prog} ${SOURCES})
 
 if(${LINK_TYPE} STREQUAL "static")
-  set(LIBS MMCPPLIB.a MMC_APP_LIB.a pthread dl rt )    
-  target_link_libraries(${prog} -no-pie ${LIBS} fmt::fmt)
+  set(LIBS MMCPPLIB.a MMC_APP_LIB.a pthread dl rt fmt::fmt pugixml::pugixml )    
+  target_link_libraries(${prog} -no-pie ${LIBS} )
 else()
   set(LIBS MMCPPLIB MMC_APP_LIB pthread dl rt)
   target_link_libraries(${prog} -rdynamic -Wl,-rpath,"/mnt/usr/UserScripts:/mnt/jffs/usr/lib:/usr/lib:/lib" ${LIBS})

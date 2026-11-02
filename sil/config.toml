@@ -1,0 +1,4 @@
+[Sil]
+func = "DoSilTest"
+cmd_src = "MMC_UCUSER607A_SRC"
+mode = "OPM402_CYCLIC_SYNC_POSITION_MODE"
